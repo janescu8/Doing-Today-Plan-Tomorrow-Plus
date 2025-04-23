@@ -18,6 +18,9 @@ creds = Credentials.from_service_account_info(st.secrets["google_auth"], scopes=
 client = gspread.authorize(creds)
 sheet = client.open("迷惘但想搞懂的我").sheet1
 
+# --- Utility: get headers once for cell updates ---
+HEADERS = sheet.row_values(1)
+
 # --- Dynamic Users Setup ---
 try:
     raw_records = sheet.get_all_records()
@@ -78,7 +81,7 @@ try:
     df = pd.DataFrame(data)
 
     # 欄位標準化
-    col_map = {}
+    col_map = {col:'未知' for col in df.columns}
     for col in df.columns:
         if '使用者' in col:
             col_map[col] = '使用者'
@@ -103,13 +106,13 @@ try:
         for _, row in df.iterrows():
             st.markdown(f"""
             <div style='border:1px solid #ccc; border-radius:10px; padding:10px; margin-bottom:10px;'>
-                <strong>🗓️ 日期：</strong> {row.get('日期')}<br>
-                <strong>📌 今天你做了什麼：</strong> {row.get('今天你做了什麼')}<br>
-                <strong>🎯 有感覺的事：</strong> {row.get('今天有感覺的事')}<br>
-                <strong>📊 整體感受：</strong> {row.get('今天整體感受')}/10<br>
-                <strong>🧠 自主選擇：</strong> {row.get('今天做的事，是自己選的嗎？')}<br>
-                <strong>🚫 不想再來：</strong> {row.get('今天最不想再來一次的事')}<br>
-                <strong>🌱 明天想做什麼：</strong> {row.get('明天你想做什麼')}
+                <strong>🗓️ 日期：</strong> {row['日期']}<br>
+                <strong>📌 今天你做了什麼：</strong> {row['今天你做了什麼']}<br>
+                <strong>🎯 今天有感覺的事：</strong> {row['今天有感覺的事']}<br>
+                <strong>📊 今天整體感受：</strong> {row['今天整體感受']}/10<br>
+                <strong>🧠 是自主選擇：</strong> {row['今天做的事，是自己選的嗎？']}<br>
+                <strong>🚫 今天最不想再來的事：</strong> {row['今天最不想再來一次的事']}<br>
+                <strong>🌱 明天想做什麼：</strong> {row['明天你想做什麼']}
             </div>
             """, unsafe_allow_html=True)
 
@@ -140,7 +143,8 @@ st.header("📝 編輯過去紀錄 / Edit Past Entries")
 def get_user_data(username):
     records = sheet.get_all_records()
     df = pd.DataFrame(records)
-    col_map = {}
+    # normalize cols same as above
+    col_map = {col:'未知' for col in df.columns}
     for col in df.columns:
         if '使用者' in col:
             col_map[col] = '使用者'
@@ -162,21 +166,35 @@ def get_user_data(username):
     return df[df['使用者'] == username].reset_index(drop=True)
 
 def update_row(row_index, values):
-    sheet.update(f"A{row_index+2}:H{row_index+2}", [values])
+    # 逐欄更新，確保不新增欄位
+    sheet_row = row_index + 2  # data starts at row 2
+    for key, val in values.items():
+        if key in HEADERS:
+            col_idx = HEADERS.index(key) + 1
+            sheet.update_cell(sheet_row, col_idx, val)
 
-df_user = get_user_data(user)
-if not df_user.empty:
-    selected_date = st.selectbox("請選擇要編輯的日期：", df_user['日期'])
-    entry = df_user[df_user['日期'] == selected_date].iloc[0]
+# load user entries
+entries = get_user_data(user)
+if not entries.empty:
+    selected_date = st.selectbox("請選擇要編輯的日期：", entries['日期'])
+    entry = entries[entries['日期'] == selected_date].iloc[0]
 
-    doing_today = st.text_area("📌 今天你做了什麼", entry['今天你做了什麼'])
-    feeling_event = st.text_input("🎯 今天有感覺的事", entry['今天有感覺的事'])
-    overall_feeling = st.slider("📊 今天整體感受 (1-10)", 1, 10, int(entry['今天整體感受']), key="slider_edit")
-    self_choice = st.text_input("🧠 是自主選擇嗎？", entry['今天做的事，是自己選的嗎？'])
-    dont_repeat = st.text_input("🚫 今天最不想再來的事", entry['今天最不想再來一次的事'])
-    plan_tomorrow = st.text_input("🌱 明天想做什麼", entry['明天你想做什麼'])
+    doing_today_e = st.text_area("📌 今天你做了什麼", entry['今天你做了什麼'])
+    feeling_event_e = st.text_input("🎯 今天有感覺的事", entry['今天有感覺的事'])
+    overall_feeling_e = st.slider("📊 今天整體感受 (1-10)", 1, 10, int(entry['今天整體感受']), key="edit_slider")
+    self_choice_e = st.text_input("🧠 是自主選擇嗎？", entry['今天做的事，是自己選的嗎？'])
+    dont_repeat_e = st.text_input("🚫 今天最不想再來的事", entry['今天最不想再來一次的事'])
+    plan_tomorrow_e = st.text_input("🌱 明天想做什麼", entry['明天你想做什麼'])
 
     if st.button("更新紀錄 / Update Entry"):
-        update_row(df_user[df_user['日期'] == selected_date].index[0],
-                   [user, selected_date, doing_today, feeling_event, overall_feeling, self_choice, dont_repeat, plan_tomorrow])
-        st.success("紀錄已更新！")
+        update_row(entries[entries['日期'] == selected_date].index[0], {
+            '使用者': user,
+            '日期': selected_date,
+            '今天你做了什麼': doing_today_e,
+            '今天有感覺的事': feeling_event_e,
+            '今天整體感受': overall_feeling_e,
+            '今天做的事，是自己選的嗎？': self_choice_e,
+            '今天最不想再來一次的事': dont_repeat_e,
+            '明天你想做什麼': plan_tomorrow_e
+        })
+        st.success("紀錄已更新到原本欄位！")
