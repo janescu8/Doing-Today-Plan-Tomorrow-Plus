@@ -1,3 +1,5 @@
+# 在 Streamlit App 中新增修改日記紀錄的功能
+
 import streamlit as st
 import datetime
 import gspread
@@ -56,7 +58,7 @@ st.markdown("黑白極簡，但情緒滿載 / Minimalist B&W, Full of Emotion")
 today = datetime.date.today().strftime("%Y-%m-%d")
 doing_today = st.text_area("📌 今天你做了什麼 / What did you do today?", height=150)
 feeling_event = st.text_input("🎯 今天有感覺的事 / What felt meaningful today?")
-overall_feeling = st.slider("📊 今天整體感受 (1-10)", 1, 10, 5)
+overall_feeling = st.slider("📊 今天整體感受 (1-10)", 1, 10, 5, key="slider_create")
 self_choice = st.text_input("🧠 是自主選擇嗎？/ Was it your choice?")
 dont_repeat = st.text_input("🚫 今天最不想再來的事 / What you wouldn't repeat?")
 plan_tomorrow = st.text_input("🌱 明天想做什麼 / Plans for tomorrow?")
@@ -76,16 +78,25 @@ try:
     df = pd.DataFrame(data)
 
     # 欄位標準化
-    col_map = {
-        '使用者': '使用者', '日期': '日期',
-        '今天你做了什麼': '今天你做了什麼',
-        '今天有感覺的事': '今天有感覺的事',
-        '今天整體感受': '今天整體感受',
-        '今天做的事，是自己選的嗎？': '今天做的事，是自己選的嗎？',
-        '今天最不想再來一次的事': '今天最不想再來一次的事',
-        '明天你想做什麼': '明天你想做什麼'
-    }
-    df.rename(columns=lambda c: col_map.get(c, c), inplace=True)
+    col_map = {}
+    for col in df.columns:
+        if '使用者' in col:
+            col_map[col] = '使用者'
+        elif '日期' in col:
+            col_map[col] = '日期'
+        elif '做了什麼' in col:
+            col_map[col] = '今天你做了什麼'
+        elif '你有感覺的事' in col:
+            col_map[col] = '今天有感覺的事'
+        elif '整體感受' in col:
+            col_map[col] = '今天整體感受'
+        elif '自己選' in col:
+            col_map[col] = '今天做的事，是自己選的嗎？'
+        elif '不想再' in col:
+            col_map[col] = '今天最不想再來一次的事'
+        elif '明天' in col:
+            col_map[col] = '明天你想做什麼'
+    df.rename(columns=col_map, inplace=True)
 
     if not df.empty:
         df = df[df['使用者'] == user].tail(10)
@@ -129,6 +140,25 @@ st.header("📝 編輯過去紀錄 / Edit Past Entries")
 def get_user_data(username):
     records = sheet.get_all_records()
     df = pd.DataFrame(records)
+    col_map = {}
+    for col in df.columns:
+        if '使用者' in col:
+            col_map[col] = '使用者'
+        elif '日期' in col:
+            col_map[col] = '日期'
+        elif '做了什麼' in col:
+            col_map[col] = '今天你做了什麼'
+        elif '你有感覺的事' in col:
+            col_map[col] = '今天有感覺的事'
+        elif '整體感受' in col:
+            col_map[col] = '今天整體感受'
+        elif '自己選' in col:
+            col_map[col] = '今天做的事，是自己選的嗎？'
+        elif '不想再' in col:
+            col_map[col] = '今天最不想再來一次的事'
+        elif '明天' in col:
+            col_map[col] = '明天你想做什麼'
+    df.rename(columns=col_map, inplace=True)
     return df[df['使用者'] == username].reset_index(drop=True)
 
 def update_row(row_index, values):
@@ -140,8 +170,8 @@ if not df_user.empty:
     entry = df_user[df_user['日期'] == selected_date].iloc[0]
 
     doing_today = st.text_area("📌 今天你做了什麼", entry['今天你做了什麼'])
-    feeling_event = st.text_input("🎯 今天有感覺的事", entry['今天你有感覺的事'])
-    overall_feeling = st.slider("📊 今天整體感受 (1-10)", 1, 10, int(entry['今天整體感受']))
+    feeling_event = st.text_input("🎯 今天有感覺的事", entry['今天有感覺的事'])
+    overall_feeling = st.slider("📊 今天整體感受 (1-10)", 1, 10, int(entry['今天整體感受']), key="slider_edit")
     self_choice = st.text_input("🧠 是自主選擇嗎？", entry['今天做的事，是自己選的嗎？'])
     dont_repeat = st.text_input("🚫 今天最不想再來的事", entry['今天最不想再來一次的事'])
     plan_tomorrow = st.text_input("🌱 明天想做什麼", entry['明天你想做什麼'])
@@ -150,4 +180,3 @@ if not df_user.empty:
         update_row(df_user[df_user['日期'] == selected_date].index[0],
                    [user, selected_date, doing_today, feeling_event, overall_feeling, self_choice, dont_repeat, plan_tomorrow])
         st.success("紀錄已更新！")
-
