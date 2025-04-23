@@ -1,5 +1,3 @@
-# 在 Streamlit App 中新增修改日記紀錄的功能
-
 import streamlit as st
 import datetime
 import gspread
@@ -9,7 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import streamlit.components.v1 as components
 
-# --- Page Configuration ---
+# --- Page Configuration (must be first Streamlit command) ---
 st.set_page_config(page_title="🌀 迷惘但想搞懂的我", layout="centered")
 
 # --- Google Sheets Setup ---
@@ -17,9 +15,6 @@ scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/au
 creds = Credentials.from_service_account_info(st.secrets["google_auth"], scopes=scope)
 client = gspread.authorize(creds)
 sheet = client.open("迷惘但想搞懂的我").sheet1
-
-# --- Utility: get headers once for cell updates ---
-HEADERS = sheet.row_values(1)
 
 # --- Dynamic Users Setup ---
 try:
@@ -61,7 +56,7 @@ st.markdown("黑白極簡，但情緒滿載 / Minimalist B&W, Full of Emotion")
 today = datetime.date.today().strftime("%Y-%m-%d")
 doing_today = st.text_area("📌 今天你做了什麼 / What did you do today?", height=150)
 feeling_event = st.text_input("🎯 今天有感覺的事 / What felt meaningful today?")
-overall_feeling = st.slider("📊 今天整體感受 (1-10)", 1, 10, 5, key="slider_create")
+overall_feeling = st.slider("📊 今天整體感受 (1-10)", 1, 10, 5)
 self_choice = st.text_input("🧠 是自主選擇嗎？/ Was it your choice?")
 dont_repeat = st.text_input("🚫 今天最不想再來的事 / What you wouldn't repeat?")
 plan_tomorrow = st.text_input("🌱 明天想做什麼 / Plans for tomorrow?")
@@ -73,15 +68,15 @@ if st.button("提交 / Submit"):
     st.success("已送出！明天見🎉")
     st.markdown("---")
 
-# --- 顯示歷史紀錄 ---
+# --- 顯示過去紀錄與趨勢圖 ---
 st.markdown("---")
 st.subheader("📜 歷史紀錄（最近10筆）")
 try:
     data = sheet.get_all_records()
     df = pd.DataFrame(data)
 
-    # 欄位標準化
-    col_map = {col:'未知' for col in df.columns}
+    # 欄位名稱標準化
+    col_map = {}
     for col in df.columns:
         if '使用者' in col:
             col_map[col] = '使用者'
@@ -89,10 +84,10 @@ try:
             col_map[col] = '日期'
         elif '做了什麼' in col:
             col_map[col] = '今天你做了什麼'
-        elif '你有感覺的事' in col:
-            col_map[col] = '今天有感覺的事'
         elif '整體感受' in col:
             col_map[col] = '今天整體感受'
+        elif '感覺' in col:
+            col_map[col] = '今天有感覺的事'
         elif '自己選' in col:
             col_map[col] = '今天做的事，是自己選的嗎？'
         elif '不想再' in col:
@@ -100,23 +95,24 @@ try:
         elif '明天' in col:
             col_map[col] = '明天你想做什麼'
     df.rename(columns=col_map, inplace=True)
-
+  
     if not df.empty:
         df = df[df['使用者'] == user].tail(10)
-        for _, row in df.iterrows():
+        for index, row in df.iterrows():
             st.markdown(f"""
             <div style='border:1px solid #ccc; border-radius:10px; padding:10px; margin-bottom:10px;'>
-                <strong>🗓️ 日期：</strong> {row['日期']}<br>
-                <strong>📌 今天你做了什麼：</strong> {row['今天你做了什麼']}<br>
-                <strong>🎯 今天有感覺的事：</strong> {row['今天有感覺的事']}<br>
-                <strong>📊 今天整體感受：</strong> {row['今天整體感受']}/10<br>
-                <strong>🧠 是自主選擇：</strong> {row['今天做的事，是自己選的嗎？']}<br>
-                <strong>🚫 今天最不想再來的事：</strong> {row['今天最不想再來一次的事']}<br>
-                <strong>🌱 明天想做什麼：</strong> {row['明天你想做什麼']}
+                <strong>🗓️ 日期：</strong> {row.get('日期', '')}<br>
+                <strong>📌 今天你做了什麼 / What did you do today?：</strong> {row.get('今天你做了什麼', '')}<br>
+                <strong>🎯 今天有感覺的事 / What felt meaningful today?：</strong> {row.get('今天有感覺的事', '')}<br>
+                <strong>📊 今天整體感受 (1-10)：</strong> {row.get('今天整體感受', '')}/10<br>
+                <strong>🧠 是自主選擇嗎？/ Was it your choice?：</strong> {row.get('今天做的事，是自己選的嗎？', '')}<br>
+                <strong>🚫 今天最不想再來的事 / What you wouldn't repeat?：</strong> {row.get('今天最不想再來一次的事', '')}<br>
+                <strong>🌱 明天想做什麼 / Plans for tomorrow?：</strong> {row.get('明天你想做什麼', '')}
             </div>
             """, unsafe_allow_html=True)
 
         # 心情趨勢圖
+        st.markdown("---")
         st.subheader("📈 心情趨勢圖 / Mood Trend")
         mood_df = df[['日期', '今天整體感受']].copy()
         mood_df.columns = ['date', 'mood']
@@ -132,79 +128,8 @@ try:
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
         fig.autofmt_xdate()
         st.pyplot(fig)
+    else:
+        st.info("目前還沒有紀錄喔。")
 
 except Exception as e:
     st.error(f"讀取紀錄時發生錯誤：{e}")
-
-# --- 編輯功能 ---
-st.markdown("---")
-st.header("📝 編輯過去紀錄 / Edit Past Entries")
-
-def get_user_data(username):
-    records = sheet.get_all_records()
-    df = pd.DataFrame(records)
-    # normalize cols same as above
-    col_map = {col:'未知' for col in df.columns}
-    for col in df.columns:
-        if '使用者' in col:
-            col_map[col] = '使用者'
-        elif '日期' in col:
-            col_map[col] = '日期'
-        elif '做了什麼' in col:
-            col_map[col] = '今天你做了什麼'
-        elif '你有感覺的事' in col:
-            col_map[col] = '今天有感覺的事'
-        elif '整體感受' in col:
-            col_map[col] = '今天整體感受'
-        elif '自己選' in col:
-            col_map[col] = '今天做的事，是自己選的嗎？'
-        elif '不想再' in col:
-            col_map[col] = '今天最不想再來一次的事'
-        elif '明天' in col:
-            col_map[col] = '明天你想做什麼'
-    df.rename(columns=col_map, inplace=True)
-    return df[df['使用者'] == username].reset_index(drop=True)
-
-def update_row(row_index, values):
-    # 直接根據固定欄位 index 更新，確保不新增欄位
-    # 欄位順序: A:使用者(1), B:日期(2), C:今天你做了什麼(3), D:今天有感覺的事(4), E:今天整體感受(5), F:今天做的事，是自己選的嗎？(6), G:今天最不想再來一次的事(7), H:明天你想做什麼(8)
-    sheet_row = row_index + 2  # 資料從第2列開始
-    col_index_map = {
-        '使用者': 1,
-        '日期': 2,
-        '今天你做了什麼': 3,
-        '今天有感覺的事': 4,
-        '今天整體感受': 5,
-        '今天做的事，是自己選的嗎？': 6,
-        '今天最不想再來一次的事': 7,
-        '明天你想做什麼': 8
-    }
-    for key, val in values.items():
-        if key in col_index_map:
-            sheet.update_cell(sheet_row, col_index_map[key], val)
-
-# load user entries
-entries = get_user_data(user)
-if not entries.empty:
-    selected_date = st.selectbox("請選擇要編輯的日期：", entries['日期'])
-    entry = entries[entries['日期'] == selected_date].iloc[0]
-
-    doing_today_e = st.text_area("📌 今天你做了什麼", entry['今天你做了什麼'])
-    feeling_event_e = st.text_input("🎯 今天有感覺的事", entry['今天有感覺的事'])
-    overall_feeling_e = st.slider("📊 今天整體感受 (1-10)", 1, 10, int(entry['今天整體感受']), key="edit_slider")
-    self_choice_e = st.text_input("🧠 是自主選擇嗎？", entry['今天做的事，是自己選的嗎？'])
-    dont_repeat_e = st.text_input("🚫 今天最不想再來的事", entry['今天最不想再來一次的事'])
-    plan_tomorrow_e = st.text_input("🌱 明天想做什麼", entry['明天你想做什麼'])
-
-    if st.button("更新紀錄 / Update Entry"):
-        update_row(entries[entries['日期'] == selected_date].index[0], {
-            '使用者': user,
-            '日期': selected_date,
-            '今天你做了什麼': doing_today_e,
-            '今天有感覺的事': feeling_event_e,
-            '今天整體感受': overall_feeling_e,
-            '今天做的事，是自己選的嗎？': self_choice_e,
-            '今天最不想再來一次的事': dont_repeat_e,
-            '明天你想做什麼': plan_tomorrow_e
-        })
-        st.success("紀錄已更新到原本欄位！")
