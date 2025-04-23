@@ -166,12 +166,22 @@ def get_user_data(username):
     return df[df['使用者'] == username].reset_index(drop=True)
 
 def update_row(row_index, values):
-    # 逐欄更新，確保不新增欄位
-    sheet_row = row_index + 2  # data starts at row 2
+    # 直接根據固定欄位 index 更新，確保不新增欄位
+    # 欄位順序: A:使用者(1), B:日期(2), C:今天你做了什麼(3), D:今天有感覺的事(4), E:今天整體感受(5), F:今天做的事，是自己選的嗎？(6), G:今天最不想再來一次的事(7), H:明天你想做什麼(8)
+    sheet_row = row_index + 2  # 資料從第2列開始
+    col_index_map = {
+        '使用者': 1,
+        '日期': 2,
+        '今天你做了什麼': 3,
+        '今天有感覺的事': 4,
+        '今天整體感受': 5,
+        '今天做的事，是自己選的嗎？': 6,
+        '今天最不想再來一次的事': 7,
+        '明天你想做什麼': 8
+    }
     for key, val in values.items():
-        if key in HEADERS:
-            col_idx = HEADERS.index(key) + 1
-            sheet.update_cell(sheet_row, col_idx, val)
+        if key in col_index_map:
+            sheet.update_cell(sheet_row, col_index_map[key], val)
 
 # load user entries
 entries = get_user_data(user)
