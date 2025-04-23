@@ -140,7 +140,7 @@ if not df_user.empty:
     entry = df_user[df_user['日期'] == selected_date].iloc[0]
 
     doing_today = st.text_area("📌 今天你做了什麼", entry['今天你做了什麼'])
-    feeling_event = st.text_input("🎯 今天有感覺的事", entry['今天有感覺的事'])
+    feeling_event = st.text_input("🎯 今天有感覺的事", entry['今天你有感覺的事'])
     overall_feeling = st.slider("📊 今天整體感受 (1-10)", 1, 10, int(entry['今天整體感受']))
     self_choice = st.text_input("🧠 是自主選擇嗎？", entry['今天做的事，是自己選的嗎？'])
     dont_repeat = st.text_input("🚫 今天最不想再來的事", entry['今天最不想再來一次的事'])
