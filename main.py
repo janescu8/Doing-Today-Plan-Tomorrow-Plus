@@ -133,3 +133,40 @@ try:
 
 except Exception as e:
     st.error(f"讀取紀錄時發生錯誤：{e}")
+
+# --- 編輯紀錄區塊 ---
+st.markdown("---")
+st.subheader("✏️ 編輯紀錄 / Edit Past Entry")
+
+# 取出該使用者所有紀錄
+user_data = df[df['使用者'] == user].copy()
+user_data['日期'] = pd.to_datetime(user_data['日期'])
+user_data = user_data.sort_values('日期', ascending=False).reset_index(drop=True)
+
+if not user_data.empty:
+    edit_dates = user_data['日期'].dt.strftime('%Y-%m-%d').tolist()
+    default_date = edit_dates[0]  # 預設是最新一筆
+    selected_date = st.selectbox("選擇要編輯的日期 / Select a date to edit", edit_dates, index=0)
+
+    # 找到要編輯的那筆紀錄
+    record_to_edit = user_data[user_data['日期'].dt.strftime('%Y-%m-%d') == selected_date].iloc[0]
+    row_number_in_sheet = df[(df['使用者'] == user) & (df['日期'] == selected_date)].index[0] + 2  # gspread row (加上 header)
+
+    # 建立可編輯表單
+    with st.form("edit_form"):
+        new_doing = st.text_area("📌 今天你做了什麼", record_to_edit.get('今天你做了什麼', ''), height=100)
+        new_event = st.text_input("🎯 今天有感覺的事", record_to_edit.get('今天有感覺的事', ''))
+        new_mood = st.slider("📊 今天整體感受 (1-10)", 1, 10, int(record_to_edit.get('今天整體感受', 5)))
+        new_choice = st.text_input("🧠 是自主選擇嗎？", record_to_edit.get('今天做的事，是自己選的嗎？', ''))
+        new_repeat = st.text_input("🚫 今天最不想再來的事", record_to_edit.get('今天最不想再來一次的事', ''))
+        new_plan = st.text_input("🌱 明天想做什麼", record_to_edit.get('明天你想做什麼', ''))
+
+        submitted = st.form_submit_button("更新紀錄 / Update Entry")
+        if submitted:
+            updated_row = [user, selected_date, new_doing, new_event, new_mood, new_choice, new_repeat, new_plan]
+            sheet.update(f'A{row_number_in_sheet}:H{row_number_in_sheet}', [updated_row])
+            st.success(f"{selected_date} 的紀錄已成功更新！")
+            st.experimental_rerun()
+else:
+    st.info("目前尚無可供編輯的紀錄。")
+
