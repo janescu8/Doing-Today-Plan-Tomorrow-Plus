@@ -7,14 +7,11 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import streamlit.components.v1 as components
 
-# --- Page Configuration (must be first Streamlit command) ---
-st.set_page_config(page_title="🌀 doing-today-plan-tomorrow-plus", layout="centered")
-
 # --- Google Sheets Setup ---
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = Credentials.from_service_account_info(st.secrets["google_auth"], scopes=scope)
 client = gspread.authorize(creds)
-sheet = client.open("迷惘但想搞懂的我").sheet1
+sheet = client.open("doing-today-plan-tomorrow-plus").sheet1
 
 # --- Dynamic Users Setup ---
 try:
