@@ -8,7 +8,7 @@ import matplotlib.dates as mdates
 import streamlit.components.v1 as components
 
 # --- Page Configuration (must be first Streamlit command) ---
-st.set_page_config(page_title="🌀 迷惘但想搞懂的我", layout="centered")
+st.set_page_config(page_title="🌀 doing-today-plan-tomorrow-plus", layout="centered")
 
 # --- Google Sheets Setup ---
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
