@@ -54,9 +54,9 @@ today = datetime.date.today().strftime("%Y-%m-%d")
 doing_today = st.text_area("📌 今天你做了什麼 / What did you do today?", height=150)
 feeling_event = st.text_input("🎯 今天有感覺的事 / What felt meaningful today?")
 overall_feeling = st.slider("📊 今天整體感受 (1-10)", 1, 10, 5)
-self_choice = st.text_input("🧠 是自主選擇嗎？/ Was it your choice?")
-dont_repeat = st.text_input("🚫 今天最不想再來的事 / What you wouldn't repeat?")
-plan_tomorrow = st.text_input("🌱 明天想做什麼 / Plans for tomorrow?")
+self_choice = st.text_area("🧠 是自主選擇嗎？/ Was it your choice?")
+dont_repeat = st.text_area("🚫 今天最不想再來的事 / What you wouldn't repeat?")
+plan_tomorrow = st.text_area("🌱 明天想做什麼 / Plans for tomorrow?")
 
 if st.button("提交 / Submit"):
     row = [user, today, doing_today, feeling_event, overall_feeling, self_choice, dont_repeat, plan_tomorrow]
