@@ -193,4 +193,3 @@ st.download_button(
     file_name="journal_export.csv",
     mime='text/csv'
 )
-
